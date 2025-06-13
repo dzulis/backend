@@ -1,7 +1,9 @@
 const express = require('express');
 const morgan = require('morgan');
 const app = express();
+const mongoose = require('mongoose') 
 const path = require('path');
+const { error } = require('console');
 
 
 app.use(express.json());
@@ -10,16 +12,16 @@ app.use(express.static("dist"));
 //   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 // });
 
+const mongoUrl = `mongodb+srv://jjedrzejek5:Juleczka14@dtabasepolo.mdleepc.mongodb.net/?retryWrites=true&w=majority&appName=dtabasepolo`;
+mongoose.connect(mongoUrl)
+  .then(() => console.log('✅ Connected to MongoDB'))
+  .catch((error) => console.error('❌ Error connecting to MongoDB:', error.message));
+
 
 morgan.token('body', (req) => JSON.stringify(req.body));
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'));
 
-let persons = [
-  { id: '1', name: 'Arto Hellas', number: '040-123456' },
-  { id: '2', name: 'Ada Lovelace', number: '39-44-5323523' },
-  { id: '3', name: 'Dan Abramov', number: '12-43-234345' },
-  { id: '4', name: 'Mary Poppendieck', number: '39-23-6423122' }
-];
+
 
 //wyswietlanie wszystkich z książki 
 app.get('/api/persons', (request, response) => {
@@ -35,42 +37,70 @@ app.get('/info', (request, response) => {
 
 //wyswietlanie konkretnej osoby z wybranym id
 app.get('/api/persons/:id', (request, response) => {
-  const id = request.params.id;
-  const person = persons.find(p => p.id === id);
-  if (person) {
-    response.json(person);
-  } else {
-    response.status(404).end();
-  }
-});
+  
+  Persons.findById(response.params.id)
+    .then(persons =>{
+      if (person) {
+        response.json(person);
+      } else {
+        response.status(404).end();
+      }
+    }
+    )
+    .catch(error => nextTick(error));
+  });
+  
 
 //usuwaie osoby 
-app.delete('/api/persons/:id', (request, response) => {
-  const id = request.params.id;
-  persons = persons.filter(p => p.id !== id);
-  response.status(204).end();
+// DELETE by MongoDB _id
+app.delete('/api/persons/:id', (req, res, next) => {
+  Person.findByIdAndDelete(req.params.id)
+    .then(result => {
+      if (result) {
+        res.status(204).end();
+      } else {
+        res.status(404).json({ error: 'Person not found' });
+      }
+    })
+    .catch(error => next(error));
 });
 
-//dodawanie osoby 
-app.post('/api/persons', (request, response) => {
-  const body = request.body;
+// POST new person
+app.post('/api/persons', (req, res, next) => {
+  const { name, number } = req.body;
 
-  if (!body.name || !body.number) {
-    return response.status(400).json({ error: 'name or number missing' });
+  if (!name || !number) {
+    return res.status(400).json({ error: 'name or number is missing' });
   }
 
-  if (persons.find(p => p.name === body.name)) {
-    return response.status(400).json({ error: 'name must be unique' });
+  const person = new Person({ name, number });
+
+  person.save()
+    .then(saved => res.json(saved))
+    .catch(error => next(error));
+});
+
+// PUT update by MongoDB _id
+app.put('/api/persons/:id', (req, res, next) => {
+  const { name, number } = req.body;
+
+  if (!name || !number) {
+    return res.status(400).json({ error: 'name or number is missing' });
   }
 
-  const newPerson = {
-    id: (Math.random() * 1000000).toFixed(0),
-    name: body.name,
-    number: body.number
-  };
-
-  persons = persons.concat(newPerson);
-  response.json(newPerson);
+  Person.findByIdAndUpdate(
+    req.params.id,
+    { name, number },
+    { new: true, runValidators: true, context: 'query' }
+  )
+    .then(updated => {
+      if (updated) {
+        res.json(updated);
+      } else {
+        res.status(404).send({ error: 'Person not found' });
+      }
+    })
+    .catch(error => next(error));
 });
 
 //obsługiwanie wyjątków
