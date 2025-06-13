@@ -1,4 +1,3 @@
-
 {
   "name": "phonebook-backend",
   "version": "1.0.0",
@@ -8,6 +7,7 @@
   },
   "dependencies": {
     "express": "^5.1.0",
+    "mongoose": "^8.15.2",
     "morgan": "^1.10.0"
   },
   "devDependencies": {

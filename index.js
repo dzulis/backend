@@ -1,7 +1,7 @@
 const express = require('express');
 const morgan = require('morgan');
 const app = express();
-const mongoose = require('mongoose') 
+const mongoose = require('mongoose'); 
 const path = require('path');
 const { error } = require('console');
 
